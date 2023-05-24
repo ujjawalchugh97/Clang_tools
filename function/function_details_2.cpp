@@ -28,27 +28,17 @@ public:
         }
         
         // Check if the function call returns something
-
             QualType returnType = functionDecl->getReturnType();
-
             if (!returnType->isVoidType()) {
-
                 Expr *calleeExpr = callExpr->getCallee();
-
                 if (isa<DeclRefExpr>(calleeExpr)) {
-
                     DeclRefExpr *declRefExpr = cast<DeclRefExpr>(calleeExpr);
-
                     ValueDecl *valueDecl = declRefExpr->getDecl();
-
                     llvm::outs() << "Return Variable: " << valueDecl->getNameAsString() << "\n";
-
                     llvm::outs() << "Return Type: " << returnType.getAsString() << "\n";
-
                 }
-
             }
-
+        }
         return true;
     }
 
