@@ -36,6 +36,11 @@ private:
         SourceRange sourceRange = expr->getSourceRange();
         return Lexer::getSourceText(CharSourceRange::getTokenRange(sourceRange), sourceMgr, expr->getASTContext().getLangOpts()).str();
     }
+    std::string getSourceText(Expr *expr) {
+        SourceManager &sourceMgr = expr->getBeginLoc().getManager();
+        SourceRange sourceRange = expr->getSourceRange();
+        return Lexer::getSourceText(CharSourceRange::getTokenRange(sourceRange), sourceMgr, LangOptions()).str();
+    }
 };
 
 class FunctionCallConsumer : public ASTConsumer {
