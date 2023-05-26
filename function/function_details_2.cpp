@@ -26,16 +26,39 @@ public:
                 llvm::outs() << "    Value: " << getSourceText(arg) << "\n";
             }
         }
-        
-        // Check if the function call returns something
+            
             QualType returnType = functionDecl->getReturnType();
             if (!returnType->isVoidType()) {
-                Expr *calleeExpr = callExpr->getCallee();
-                if (isa<DeclRefExpr>(calleeExpr)) {
-                    DeclRefExpr *declRefExpr = cast<DeclRefExpr>(calleeExpr);
-                    ValueDecl *valueDecl = declRefExpr->getDecl();
-                    llvm::outs() << "Return Variable: " << valueDecl->getNameAsString() << "\n";
-                    llvm::outs() << "Return Type: " << returnType.getAsString() << "\n";
+                std::string variableName;
+                QualType variableType;
+
+                // Traverse parent nodes to find assignment or initialization expressions
+                Stmt *parentStmt = findParentStmt(callExpr);
+                if (parentStmt) {
+                    if (auto *varDeclStmt = dyn_cast<DeclStmt>(parentStmt)) {
+                        for (Decl *decl : varDeclStmt->decls()) {
+                            if (auto *varDecl = dyn_cast<VarDecl>(decl)) {
+                                variableName = varDecl->getNameAsString();
+                                variableType = varDecl->getType();
+                                break;
+                            }
+                        }
+                    } else if (auto *binaryOperator = dyn_cast<BinaryOperator>(parentStmt)) {
+                        if (binaryOperator->isAssignmentOp()) {
+                            Expr *lhs = binaryOperator->getLHS();
+                            if (auto *declRefExpr = dyn_cast<DeclRefExpr>(lhs)) {
+                                if (auto *varDecl = dyn_cast<VarDecl>(declRefExpr->getDecl())) {
+                                    variableName = varDecl->getNameAsString();
+                                    variableType = varDecl->getType();
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!variableName.empty()) {
+                    llvm::outs() << "Return Variable: " << variableName << "\n";
+                    llvm::outs() << "Return Type: " << variableType.getAsString() << "\n";
                 }
             }
         }
@@ -43,15 +66,25 @@ public:
     }
 
 private:
-    std::string getSourceText(Expr *expr) {
+    /*std::string getSourceText(Expr *expr) {
         SourceManager &sourceMgr = expr->getASTContext().getSourceManager();
         SourceRange sourceRange = expr->getSourceRange();
         return Lexer::getSourceText(CharSourceRange::getTokenRange(sourceRange), sourceMgr, expr->getASTContext().getLangOpts()).str();
-    }
+    }*/
     std::string getSourceText(Expr *expr) {
         SourceManager &sourceMgr = expr->getBeginLoc().getManager();
         SourceRange sourceRange = expr->getSourceRange();
         return Lexer::getSourceText(CharSourceRange::getTokenRange(sourceRange), sourceMgr, LangOptions()).str();
+    }
+    Stmt *findParentStmt(Expr *expr) {
+        Stmt *parentStmt = nullptr;
+        if (auto *parent = dyn_cast<Stmt>(expr->getParent())) {
+            parentStmt = parent;
+        } else if (auto *initExpr = dyn_cast<InitListExpr>(expr->getParent())) {
+            if (auto *initExprParent = dyn_cast<Stmt>(initExpr->getParent()))
+                parentStmt = initExprParent;
+        }
+        return parentStmt;
     }
 };
 
